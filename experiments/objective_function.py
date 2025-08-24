@@ -1,122 +1,114 @@
 import numpy as np
+from typing import Dict
 
-def objective_function(bias_flag, bias_func, velocity_file, data_dict, mode, dim, loss, weights, focal_agent = 3, experiment_id = 151):  
-   
-    predicted_positions_list = []
-    actual_positions_list = []
+from configs.config import Config
+from enums.loss_functions_enum import LossFunctions
+from enums.wall_behaviour_enum import WallBehaviourType
+from experiments.wall_behaviour import WallBehaviour
 
-    if not bias_flag:
-        weights = weights[:5]
+class ObjectiveFunctionEvaluator:
 
-    if not bias_flag:
-        w1, w2, w3, w4, w5 = weights
-    else:
-        w1, w2, w3, w4, w5, w6 = weights
+    def __init__(self, config: Config, data_dict: Dict):
+        self.config = config
+        self.data_dict = data_dict
+        self.wall_behaviour: WallBehaviour = WallBehaviour()
+
+    def objective_function(self, weights: np.array):  
+        """
+        Computes the loss between predicted and actual velocities for a focal fish.
+        bias_flag: bool -> If bias_flag is True = dim 6.
+        bias_func: Function to compute the bias vector.
+        bearing_file: Dictionary containing the sorted information.
+        data_dict: Dictionary with all relevant information.
+        mode: String. Mode used in the bias function -> wall_zone.
+        dim: Integer value - Dimension of the weights.
+        loss: String. Type of loss function['cosine', 'mse_kicktime', mse_trajectory]
+        c: [None] weights for the vector. Initially None, picked later at random - array.
+        focal_agent: Integer value. Agent selected to model its behaviour - replace.
+        experiemnt_id: Integer value. Experiment filter. 
+        returns: float - Fitness - loss value.
+        """
+
+        # -------------- PREPARE WEIGHTS ---------------------------------------------------------------------
+        weights = self._prepare_weights(self.config, weights)
+
+        # -------------- EVALUATE INDIVIDUAL EXPERIMENTS AND FISH --------------------------------------------
+        mse_loss = 0.0
+        
+        for exp_id in self.config.experiment_ids:
+            if exp_id not in self.data_dict.keys():
+                raise Exception(f"The specified experiment id {exp_id} is not present in the loaded data.")
+            exp_data_dict = self.data_dict[exp_id]
+
+            for fish_id in self.config.fish_ids:
+                predicted_velocity = np.array([exp_data_dict[1]['vx_list'][fish_id], exp_data_dict[1]['vy_list'][fish_id]])
+
+                for t in range(1, max(exp_data_dict.keys())):
+                    actual_next_velocity = np.array([exp_data_dict[t+1]['vx_list'][fish_id], exp_data_dict[t+1]['vy_list'][fish_id]])
+                    
+                    vx = exp_data_dict[t]['vx_list']
+                    vy = exp_data_dict[t]['vy_list']
+
+                    predicted_velocity = [0, 0]
+                    for fish in range(len(vx)):
+                        predicted_velocity[0] += weights[fish] * vx[fish]
+                        predicted_velocity[1] += weights[fish] * vy[fish]
+                    
+                    if self.config.wall_behaviour != WallBehaviourType.NO_WALL:
+                        bias = self.wall_behaviour.compute_wall_velocity(self.config.wall_behaviour)
+                        vx_total += bias[0] * weights[5]  # Multiply by the bias agent's weight
+                        vy_total += bias[1] * weights[5]  # Multiply by the bias agent's weight
             
-    alpha, beta, gamma, delta, epsilon = w1, w2, w3, w4, w5
+                predicted_velocity = np.array(predicted_velocity)  
 
-    if bias_flag:
-        bias = w6
-    else:
-        bias = 0.0
+                # -------------- COMPUTE LOSS -----------------------------------     
+                match self.config.loss_function:
+                    case LossFunctions.COSINE:
+                        mse_loss += self.cosine_loss(actual_velocity=actual_next_velocity,
+                                                predicted_velocity=predicted_velocity)
+                    case LossFunctions.MSE_KICKTIME:
+                        actual_position = np.array([exp_data_dict[t]['x_coords'][fish_id], exp_data_dict[t]['y_coords'][fish_id]])
+                        actual_next_position = np.array([exp_data_dict[t+1]['x_coords'][fish_id], exp_data_dict[t+1]['y_coords'][fish_id]])
+                        mse_loss += self.mse_kicktime(current_position=actual_position,
+                                                actual_next_position=actual_next_position,
+                                                predicted_velocity=predicted_velocity)
+        return mse_loss
 
-    weights = np.array([alpha, beta, gamma, delta, epsilon, bias])
-        
-    if np.count_nonzero(weights) > 0:
-        norm = np.linalg.norm(weights, ord = 1)
-        weights = weights / norm
+    def cosine_loss(self, actual_velocity, predicted_velocity):
+        dotproduct = np.dot(actual_velocity, predicted_velocity)
 
-    kicktimes = []
-    mse_loss = 0.0
-    
-    for key in velocity_file:
-        kicktimes.append(key)
+        magnitude_a = np.linalg.norm(actual_velocity)
+        magnitude_b = np.linalg.norm(predicted_velocity)
 
-    for agent_id, vx, vy in velocity_file[kicktimes[0]]:
-        if agent_id == focal_agent:
-            predicted_velocity = np.array([vx, vy])
-            break
-        
-    # inital position at timestep 0 
-    first_kicktime = np.min(kicktimes)
-    initial_x = data_dict[first_kicktime]['x_coords'][0]  # focal agent is at position 0
-    initial_y = data_dict[first_kicktime]['y_coords'][0]
+        cosine_similarity = dotproduct / (magnitude_a * magnitude_b)
 
-    predicted_position = np.array([initial_x, initial_y])
+        return 1 - np.round(cosine_similarity, 4)
 
-    for i in range(len(kicktimes)-1):
+    def mse_kicktime(self, current_position, actual_next_position, predicted_velocity):
+        predicted_position = np.array(current_position) + np.array(predicted_velocity)
+        actual_position = np.array(actual_next_position)
 
-        kicktime = kicktimes[i]
-        next_kicktime = kicktimes[i + 1]
-        
-        velocities = velocity_file[kicktime]
-        next_velocities = velocity_file[next_kicktime]
+        squared_errors = (predicted_position - actual_position) ** 2
+        mse = np.mean(squared_errors)  # mean across x and y
+        return mse
 
-        updated_velocity = []
-           
-        for j, (agent_id, vx, vy) in enumerate(next_velocities):
-            if j == 0:
-                updated_velocity.append((agent_id, predicted_velocity[0], predicted_velocity[1]))
-            else:
-                updated_velocity.append((agent_id, vx, vy))
-           
-        vx_total = 0.0
-        vy_total = 0.0   
-            
-        for j, (agent_id, vx, vy) in enumerate(updated_velocity):
-            weight = weights[j]
-          
-            vx_total += vx * weight  
-            vy_total += vy * weight 
+    def _prepare_weights(self, config:Config, weights:list):
+        # Initalize weight vector c if not provided
+        if weights is None:
+            weights = np.random.rand(config.dimensions)
 
-        if bias_flag:
-            bias = bias_func(data_dict, kicktime, predicted_velocity, mode)
-            vx_total += bias[0] * weights[5]  # Multiply by the bias agent's weight
-            vy_total += bias[1] * weights[5]  # Multiply by the bias agent's weight
-        
-        predicted_velocity = np.array([vx_total, vy_total]) 
+        # weights
+        alpha, beta, gamma, delta, epsilon = weights[0], weights[1], weights[2], weights[3], weights[4]
+        bias = weights[5]
+        weights = np.array([alpha, beta, gamma, delta, epsilon, bias])
 
-        # update
+        # if bias = False -> dime 5 -> bias_zero
+        if config.wall_behaviour == WallBehaviourType.NO_WALL:
+            weights[5] = 0.0
 
-        if loss == 'cosine':
-            actual_velocity = np.array([
-            data_dict[next_kicktime]['vx_list'][0],
-            data_dict[next_kicktime]['vy_list'][0]
-        ])
+        # Normalise the weights using L1 norm
+        if np.count_nonzero(weights) > 0:
+            norm = np.linalg.norm(weights, ord = 1)
+            weights = weights / norm
 
-            dotproduct = np.dot(actual_velocity, predicted_velocity)
-
-            magnitude_a = np.linalg.norm(actual_velocity)
-            magnitude_b = np.linalg.norm(predicted_velocity)
-
-            cosine_similarity = dotproduct / (magnitude_a * magnitude_b)
-
-            mse_loss += 1 - np.round(cosine_similarity, 4)
-         
-        else:
-
-            if loss == 'mse_kicktime':
-                # per kicktime mse loss
-                updated_x = data_dict[kicktimes[i]]['x_coords'][0]  # focal agent is at position 0
-                updated_y = data_dict[kicktimes[i]]['y_coords'][0]
-
-                predicted_position = np.array([updated_x, updated_y])
-                predicted_position += predicted_velocity
-            
-            elif loss == 'mse_trajectory':
-                # trajectory mse loss
-                predicted_position += predicted_velocity
-
-
-            actual_position = np.array([
-                data_dict[next_kicktime]['x_coords'][0],
-                data_dict[next_kicktime]['y_coords'][0]
-            ])
-
-            delta_x = predicted_position[0] - actual_position[0]
-            delta_y = predicted_position[1] - actual_position[1]
-            distance = np.sqrt(delta_x**2 + delta_y**2)
-
-            mse_loss += distance** 2
-
-    return mse_loss
+        return weights

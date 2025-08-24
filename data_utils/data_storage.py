@@ -1,20 +1,7 @@
-import matplotlib.pyplot as plt
-import numpy as np
-import random
 import csv, string
-import math
 import pandas as pd
 
-import data_utils.analysis_utils as au
-import experiments.objective_function as of
-from data_utils.data_ranking import DataRanker
-from visualisation.results_plotting import ResultsPlotter
-
-
 class DataStorageHandler:
-    def __init__(self):
-        pass
-
     # -------------------------------------------------------------------
     # LOADING
     # -------------------------------------------------------------------
@@ -22,125 +9,51 @@ class DataStorageHandler:
     def load_csv_file_to_dataframe(self, file_path, headers):
         return pd.read_csv(file_path, delim_whitespace=True, header=None, names=headers)
     
-    def load_processed_data(self, file_path):
-        '''
-        The function reads the data from the create feature_151.csv file.
-        '''
+
+    def load_processed_data(self, file_path, exp_ids=None, sort_by=None, ascending=True):
+        """
+        Load processed CSV into a nested dict: {exp_id -> {timestep -> feature arrays}}.
+        
+        Parameters
+        ----------
+        file_path : str
+            Path to the processed CSV file.
+        exp_ids : list[int] or None
+            Experiment IDs to include. If None, include all.
+        sort_by : str or None
+            Column name to sort rows within each kicktime group. If None, no sorting.
+        ascending : bool
+            Sort order for the sort_by column.
+        """
+        df = pd.read_csv(file_path)
+
+        # Filter experiments if provided
+        if exp_ids is not None:
+            df = df[df["exp_id"].isin(exp_ids)]
 
         data_dict = {}
+        for exp_id, exp_group in df.groupby("exp_id"):
+            exp_dict = {}
+            for timestep, g in exp_group.groupby("timestep"):
+                # Sort within each (exp_id, timestep) group if requested
+                if sort_by is not None and sort_by in g.columns:
+                    g = g.sort_values(by=sort_by, ascending=ascending)
 
-        with open(file_path, newline='') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                kicktime = float(row['Kick_Time'])
-                x = float(row['x'])
-                y = float(row['y'])
-                vx = float(row['vx'])
-                vy = float(row['vy'])
-                x_wall = float(row['x_wall'])
-                y_wall = float(row['y_wall'])
-                tangent_x = float(row['tangent_x'])
-                tangent_y = float(row['tangent_y'])
-                radius_x = float(row['radius_x'])
-                radius_y = float(row['radius_y'])
-                wall_distance = float(row['wall_distance'])
-
-                if kicktime not in data_dict:
-                    data_dict[kicktime] = {
-                        'x_coords': [],
-                        'y_coords': [],
-                        'vx_list': [],
-                        'vy_list': [],
-                        'wall_vectors': [],
-                        'wall_x': [],
-                        'wall_y': [],
-                        'tangent_vectors': [],
-                        'radius_vectors': [],
-                        'wall_distances': []
-                    }
-
-                data_dict[kicktime]['x_coords'].append(x)
-                data_dict[kicktime]['y_coords'].append(y)
-                data_dict[kicktime]['vx_list'].append(vx)
-                data_dict[kicktime]['vy_list'].append(vy)
-                data_dict[kicktime]['wall_x'].append(x_wall)
-                data_dict[kicktime]['wall_y'].append(y_wall)
-                data_dict[kicktime]['tangent_vectors'].append((tangent_x, tangent_y))
-                data_dict[kicktime]['radius_vectors'].append((radius_x, radius_y))
-                data_dict[kicktime]['wall_distances'].append(wall_distance)
+                exp_dict[timestep] = {
+                    "fish_ids": g["fish_id"].to_numpy(),   # keep track of fish identity
+                    "x_coords": g["x"].to_numpy(),
+                    "y_coords": g["y"].to_numpy(),
+                    "vx_list": g["vx"].to_numpy(),
+                    "vy_list": g["vy"].to_numpy(),
+                    "wall_x": g["x_wall"].to_numpy(),
+                    "wall_y": g["y_wall"].to_numpy(),
+                    "tangent_vectors": g[["tangent_x", "tangent_y"]].to_numpy(),
+                    "radius_vectors": g[["repulse_x", "repulse_y"]].to_numpy(),
+                    "wall_distances": g["dist_to_wall"].to_numpy(),
+                }
+            data_dict[exp_id] = exp_dict
 
         return data_dict
-    
-    def load_data(self, filepath, data_dict, prediction, focal_agent = 3, experiment_id = 151):
-        """
-        The function loads the csv data of agent positions, velocities, adds predicted velocities.
-        filepath: str. Path to the file.
-        data_dict: Dict. Maps actual positions for each kick time.
-        prediction: Dict. Predicted velocity vectors for the focal agent at kick time.
-        focal_agent: int. ID of the focal fish= 3. 
-        experiment_id = 151. int. Experinment ID of the current data.
-        return: plot_data : list of dict.
-        """
-        kicktimes = {}
-
-        # Read the file.
-        with open(filepath, newline='') as csvfile:
-            reader = csv.DictReader(csvfile)
-
-            for row in reader:
-                if int(row['Experiment_ID']) != experiment_id:
-                    continue
-                # Extract the data
-                kicktime = float(row['Kick_Time'])
-                agent_id = int(row['Agent_ID'])
-                x = float(row['X'])
-                y = float(row['Y'])
-                vx = float(row['vx'])
-                vy = float(row['vy'])
-
-                if kicktime not in kicktimes:
-                    kicktimes[kicktime] = []
-                kicktimes[kicktime].append((agent_id, x, y, vx, vy))
-
-        plot_data = []
-
-        sorted_times = sorted(kicktimes.keys())
-
-        for i in range(len(sorted_times) - 1):
-            kicktime = sorted_times[i]
-
-            for k in kicktimes[kicktime]:
-
-                if k[0] == focal_agent:
-                    plot_data.append({
-                        "kicktime": kicktime,
-                        "x": k[1],
-                        "y": k[2],
-                        "actual_vx":k[3],
-                        "actual_vy": k[4],
-                        "predicted_vx": prediction[i][0],
-                        "predicted_vy" :  prediction[i][1]
-                    })
-        
-        return plot_data
-
-    
-    def orientation_velocity(self, file_path):
-        kick_times = {}
-        with open(file_path) as csv_file:
-            csv_reader = csv.DictReader(csv_file, delimiter = ",")
-
-            for row in csv_reader:
-                kick_time = float(row["Kick_Time"])
-                agent_id = int(row["Agent_ID"])
-                vx = float(row["vx"])
-                vy = float(row["vy"])
-
-                if kick_time not in kick_times:
-                    kick_times[kick_time] = []
-                kick_times[kick_time].append((agent_id, vx, vy))
-
-        return kick_times
     
     # -----------------------------------------------------------------------
     # SAVING
@@ -161,83 +74,3 @@ class DataStorageHandler:
             for run, (x_values, f_values) in enumerate(zip(all_x_values, all_fitness_values), start=1):
                 for generation, (best_x, best_fitness) in enumerate(zip(x_values, f_values)):
                     writer.writerow([run, generation, best_x, best_fitness])
-
-    def save_loss_evaluation(self, evaluation_file, configurations):
-        '''
-        The function evaluate and save loss metrics for each model configurations.
-        The function iterates over velocity types, bias configurations, and loss functions.
-        It computes the loss values for each combination, and writes the results
-        to a CSV file.
-
-        evaluation_file : str. Path to the output CSV file.
-        '''
-        # loss functions and velocity sorting criteria
-        loss_function = ['cosine', 'mse_kicktime', 'mse_trajectory']
-        sorted_velocity_types = ['orientation', 'distance', 'bearing']
-
-        ranker = DataRanker()
-        plotter = ResultsPlotter()
-
-        # Write the file
-        with open(evaluation_file, 'w', newline = '') as f:
-            writer = csv.writer(f)
-            header = ['Model', 'Fitness EA', 'Weighs', 'Bias_Mode', 'Cosine', 'MSE Kicktime', 'MSE_Trajectory', 'Sorted Velocity Criteria']
-            writer.writerow(header) 
-            data_dict = self.load_processed_data("features_151.csv")
-
-            for types in sorted_velocity_types:
-                # Load the corresponding file
-                if types == 'orientation':
-                    velocity_file = ranker.velocity("orientation_difference_151.csv")
-                elif types == 'distance':
-                    velocity_file = ranker.velocity("distance_difference_151.csv")
-                elif types == 'bearing':
-                    velocity_file = ranker.velocity("bearing_difference_151.csv")
-                else:
-                    print('File not found')
-                    continue
-                
-                # Test each bias configuration and its modes
-                for config in configurations:
-                    for mode in config['modes']:
-                        # Test each loss function in this configuration
-                        for loss in config['loss']:
-
-                            folder_path = r"C:\Users\soori\Desktop\Thesis\Thesis\Test\LossCompare"
-
-                            if mode:
-                                file_name = f'{types}_{loss}_results_{mode}'
-                            else:
-                                file_name = f"{types}_{loss}_results_{config['name']}"
-                            
-                            # EA results 
-                            results = plotter.generation_filter(folder_path, file_name, config['flag'], generation = 99)
-                            best_result = au.extract_min_fitness_value(results)
-                            
-                            # Extract the best weight and its fitness value
-                            weights = best_result['weights']
-                            fitness = best_result['fitness']
-                            model_name = best_result['file_suffix']
-
-                            # Compute losses for all loss functions using objective_function
-                            loss_dct = {}
-                            for loss in loss_function:
-
-                                loss_value = of.objective_function(
-                                    bias_flag = config['flag'],
-                                    bias_func = config['bias_function'],
-                                    velocity_file = velocity_file,
-                                    data_dict = data_dict,
-                                    mode = mode, 
-                                    dim = 6,
-                                    loss =  loss,
-                                    weights = weights,
-                                    focal_agent = 3,
-                                    experiment_id = 151
-                                )
-
-                                loss_dct[loss] = loss_value
-
-                            mode_name = f"{config['name']}_{mode}"
-
-                            writer.writerow([model_name, fitness, weights, mode_name, loss_dct['cosine'], loss_dct['mse_kicktime'], loss_dct['mse_trajectory'], types])
