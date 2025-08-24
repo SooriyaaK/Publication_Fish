@@ -1,15 +1,99 @@
-import csv
+import csv, string
 import math
 import numpy as np
 from typing import List
+import pandas as pd
 
-from data_utils.data_preparation import DataPreparator
+from data_utils.data_storage import DataStorageHandler
+from enums.datasets_enum import Dataset
 from experiments.wall_behaviour import WallBehaviour
 
 class DataPreparator:
 
-    def __init__(self):
-        pass
+    def __init__(self, data_set:Dataset, save_path:string):
+        self.data_set = data_set
+        self.save_path = save_path
+        self.storage_handler = DataStorageHandler()
+
+    def prepare_data(self):
+        match self.data_set:
+            case Dataset.LEI2020:
+                self._prepare_data_lei_2020()
+
+    def _prepare_data_lei_2020(self):
+        df = self.storage_handler.load_csv_file_to_dataframe(self.data_set.file_path, self.data_set.headers)
+        # add velocities
+        df = self._compute_and_append_velocities(df)
+
+        # add sorting information
+        df = self._compute_and_append_metrics(df)
+
+        # add timesteps
+        df = self._add_timesteps_from_kicktimes(df)
+
+        self.storage_handler.save_data_to_csv(df, self.save_path)
+
+    def _compute_and_append_velocities(self, df):
+        df["vx"] = (
+            df.groupby(["exp_id", "fish_id"])["x"].diff() /
+            df.groupby(["exp_id", "fish_id"])["kicktime"].diff()
+        )
+
+        df["vy"] = (
+            df.groupby(["exp_id", "fish_id"])["y"].diff() /
+            df.groupby(["exp_id", "fish_id"])["kicktime"].diff()
+        )
+
+        df.fillna(0)
+        return df
+    
+    def _compute_and_append_metrics(self, df):
+        # Compute orientation for all fish
+        df["orientation"] = np.arctan2(df["vy"], df["vx"])
+
+        for focal_fish_id in df["fish_id"].unique():
+            # Step 1: get focal fish positions + orientation
+            focal = (
+                df[df["fish_id"] == focal_fish_id]
+                .rename(columns={"x": "x_focal", "y": "y_focal", "orientation": "orient_focal"})
+                [["exp_id", "kicktime", "x_focal", "y_focal", "orient_focal"]]
+            )
+
+            # Step 2: merge with all fish on (exp_id, kicktime)
+            df_with_focal = df.merge(focal, on=["exp_id", "kicktime"], how="left")
+
+            # Step 3a: Euclidean distance
+            df_with_focal[f"dist_to_fish_{focal_fish_id}"] = np.sqrt(
+                (df_with_focal["x"] - df_with_focal["x_focal"])**2 +
+                (df_with_focal["y"] - df_with_focal["y_focal"])**2
+            )
+
+            # Step 3b: Bearing relative to focal
+            df_with_focal[f"bearing_to_fish_{focal_fish_id}"] = np.arctan2(
+                df_with_focal["y"] - df_with_focal["y_focal"],
+                df_with_focal["x"] - df_with_focal["x_focal"]
+            )
+
+            # Step 3c: Orientation difference (neighbor - focal, wrapped to [-pi, pi])
+            diff = df_with_focal["orientation"] - df_with_focal["orient_focal"]
+            df_with_focal[f"orient_diff_to_fish_{focal_fish_id}"] = (diff + np.pi) % (2*np.pi) - np.pi
+
+            # Clean up temp columns
+            df_with_focal = df_with_focal.drop(["x_focal", "y_focal", "orient_focal"], axis=1)
+
+            df = df_with_focal
+
+        return df
+    
+    def _add_timesteps_from_kicktimes(self, df):
+        df["timestep"] = (
+            df.groupby("exp_id")["kicktime"]
+            .rank(method="dense")  # assign 1,2,3,... for unique kicktimes
+            .astype(int) - 1       # shift so smallest = 0
+        )
+        return df
+
+
 
     def calculate_velocity(self, times: List[float], x_coordinate:List[float], y_coordinate:List[float]) -> List[float]:
         '''
@@ -94,12 +178,10 @@ class DataPreparator:
         return difference
     
     
-    def process_data(self, file_path, focal_fish =3):
+    def process_data(self, file_path, focal_fish=3):
         '''
         The function creates the feature.csv file. 
         '''
-
-        data_prep = DataPreparator()
 
         with open(file_path) as csv_file:
             reader = csv.DictReader(csv_file, delimiter=';')
@@ -136,12 +218,12 @@ class DataPreparator:
                 x_coordinate.append(float(row['X']))
                 y_coordinate.append(float(row['Y']))
 
-            velocities = data_prep.calculate_velocity(kick_times, x_coordinate, y_coordinate)
-            vx, vy = data_prep.velocity_vector(kick_times, x_coordinate, y_coordinate)
+            velocities = self.calculate_velocity(kick_times, x_coordinate, y_coordinate)
+            vx, vy = self.velocity_vector(kick_times, x_coordinate, y_coordinate)
 
             for i in range(len(rows)):
                 velocity = velocities[i]
-                angle = data_prep.calculate_angle(vx[i], vy[i])
+                angle = self.calculate_angle(vx[i], vy[i])
                 
                 rows[i]['Velocity_Between_Kicks'] = velocity
                 rows[i]['Angle'] = angle
@@ -197,9 +279,9 @@ class DataPreparator:
                     y_coordinate = float(row['Y'])
                     angle = float(row['Angle'])
 
-                    neighbour_copy['Distance_To_Focal'] = data_prep.calculate_distance(focal_x_coordinate, focal_y_coordinate, x_coordinate, y_coordinate)
-                    neighbour_copy['Bearing_To_Focal'] = data_prep.calculate_bearing(focal_x_coordinate, focal_y_coordinate, x_coordinate, y_coordinate)
-                    neighbour_copy['Orientation_Difference_To_Focal'] = data_prep.orientation_difference(focal_angle, angle)
+                    neighbour_copy['Distance_To_Focal'] = self.calculate_distance(focal_x_coordinate, focal_y_coordinate, x_coordinate, y_coordinate)
+                    neighbour_copy['Bearing_To_Focal'] = self.calculate_bearing(focal_x_coordinate, focal_y_coordinate, x_coordinate, y_coordinate)
+                    neighbour_copy['Orientation_Difference_To_Focal'] = self.orientation_difference(focal_angle, angle)
 
                     
                     neighbour_copy['vx'] = float(row['vx'])
@@ -375,5 +457,3 @@ class DataPreparator:
             writer.writerows(rows_to_write)
 
         return data_dict
-
-    compute_csv("features.csv", 3, 151)

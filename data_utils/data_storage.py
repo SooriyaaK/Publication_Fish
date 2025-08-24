@@ -1,13 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import random
-import csv
+import csv, string
 import math
+import pandas as pd
 
 import data_utils.analysis_utils as au
 import experiments.objective_function as of
 from data_utils.data_ranking import DataRanker
-from data_utils.data_storage import DataStorageHandler
 from visualisation.results_plotting import ResultsPlotter
 
 
@@ -15,6 +15,13 @@ class DataStorageHandler:
     def __init__(self):
         pass
 
+    # -------------------------------------------------------------------
+    # LOADING
+    # -------------------------------------------------------------------
+
+    def load_csv_file_to_dataframe(self, file_path, headers):
+        return pd.read_csv(file_path, delim_whitespace=True, header=None, names=headers)
+    
     def load_processed_data(self, file_path):
         '''
         The function reads the data from the create feature_151.csv file.
@@ -135,6 +142,13 @@ class DataStorageHandler:
 
         return kick_times
     
+    # -----------------------------------------------------------------------
+    # SAVING
+    # -----------------------------------------------------------------------
+
+    def save_data_to_csv(self, df: pd.DataFrame, file_path:string):
+        df.to_csv(file_path)
+    
     def save_to_csv(self, all_x_values, all_fitness_values, filename="all_runs_best_solution.csv"):
         """Save all x values and their corresponding fitness values from all runs to a single CSV file."""
         with open(filename, mode='w', newline='') as file:
@@ -162,7 +176,6 @@ class DataStorageHandler:
         sorted_velocity_types = ['orientation', 'distance', 'bearing']
 
         ranker = DataRanker()
-        storage_handler = DataStorageHandler()
         plotter = ResultsPlotter()
 
         # Write the file
@@ -170,7 +183,7 @@ class DataStorageHandler:
             writer = csv.writer(f)
             header = ['Model', 'Fitness EA', 'Weighs', 'Bias_Mode', 'Cosine', 'MSE Kicktime', 'MSE_Trajectory', 'Sorted Velocity Criteria']
             writer.writerow(header) 
-            data_dict = storage_handler.load_processed_data("features_151.csv")
+            data_dict = self.load_processed_data("features_151.csv")
 
             for types in sorted_velocity_types:
                 # Load the corresponding file
