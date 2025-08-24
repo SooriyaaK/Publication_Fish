@@ -1,16 +1,7 @@
-import csv
 import numpy as np
-import matplotlib.pyplot as plt
-import random
-import math
-import os
-from datetime import datetime
-import seaborn as sns
 from sklearn.preprocessing import StandardScaler
-from matplotlib.patches import Circle, Wedge
-import pandas as pd
-from sklearn.decomposition import PCA
-from sklearn.cluster import AgglomerativeClustering
+
+from visualisation.results_plotting import ResultsPlotter
 
 def extract_min_fitness_value(self, results):
     '''
@@ -32,37 +23,17 @@ def extract_min_fitness_value(self, results):
             }
     return best_result   
 
-def collect(folder_path):
+def collect(folder_path, configurations):
     """
     Extracts best fitness values grouped by velocity for a given loss type.
     """
+    plotter = ResultsPlotter()
     cosine_dict = {'orientation': [], 'distance': [], 'bearing': []}
     mse_trajectory_dict = {'orientation': [], 'distance': [], 'bearing': []}
     mse_kicktime_dict = {'orientation': [], 'distance': [], 'bearing': []}
 
     velocity_types = ['orientation', 'distance', 'bearing']
     loss_function = ['cosine', 'mse_kicktime', 'mse_trajectory']
-
-    configurations = [
-        {
-            "name": "bias_wall_zone", 
-            "bias_function": bias_wall_zone, 
-            "flag": True, 
-            "loss": loss_function, 
-            "modes": [
-                        'bias_wall_zone_repulsion_zone',
-                        'bias_wall_zone_alignment_zone',
-                        'bias_wall_zone_alignment_domain',
-                        'bias_wall_zone_repulsion_alignment_zone',
-                        'bias_wall_zone_repulsion_alignment_domain',
-                                ]
-        },
-        {"name": "bias_zero", "bias_function": bias_zero, "flag": False, "loss": loss_function, "modes": [None]},
-        {"name": "bias_random", "bias_function": bias_random, "flag": True, "loss": loss_function, "modes": [None]},
-        {"name": "bias_wall", "bias_function": bias_wall, "flag": True, "loss": loss_function, "modes": [None]},
-        {"name": "bias_positive", "bias_function": bias_positive, "flag": True, "loss": loss_function, "modes": [None]},
-        {"name": "bias_negative", "bias_function": bias_negative, "flag": True, "loss": loss_function, "modes": [None]},
-        ]
 
     for velocity in velocity_types:
         for config in configurations:
@@ -74,7 +45,7 @@ def collect(folder_path):
                     else:
                         file_name = f"{velocity}_{loss}_results_{config['name']}"
         
-                    results = generation_filter(folder_path, file_name, config['flag'], generation = 99)
+                    results = plotter.generation_filter(folder_path, file_name, config['flag'], generation = 99)
                     best_result = extract_min_fitness_value(results)
 
                     if loss == 'cosine':

@@ -1,15 +1,17 @@
 import csv
 import math
 import numpy as np
-import pandas as pd
-from typing import Dict, List, Tuple
+from typing import List
+
+from data_utils.data_preparation import DataPreparator
+from experiments.wall_behaviour import WallBehaviour
 
 class DataPreparator:
 
     def __init__(self):
         pass
 
-    def calculate_velocity(times: List[float], x_coordinate:List[float], y_coordinate:List[float]) -> List[float]:
+    def calculate_velocity(self, times: List[float], x_coordinate:List[float], y_coordinate:List[float]) -> List[float]:
         '''
         This function calculates the velocity between two time steps.
         '''
@@ -33,7 +35,7 @@ class DataPreparator:
 
         return velocities   
     
-    def velocity_vector(times: List[float], x_coordinate: List[float], y_coordinate:List[float]) -> List[float]:
+    def velocity_vector(self, times: List[float], x_coordinate: List[float], y_coordinate:List[float]) -> List[float]:
         """
         Compute the velocity vector.
         time: list of kick time in float.
@@ -55,7 +57,7 @@ class DataPreparator:
 
         return vx, vy   
     
-    def calculate_distance(x1, y1, x2, y2):
+    def calculate_distance(self, x1, y1, x2, y2):
         '''
         The function calculates the euclidean distance between 2 fish.
         x1, y1: Coordinates of fish 1.
@@ -63,7 +65,7 @@ class DataPreparator:
         '''
         return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
     
-    def calculate_bearing(x1, y1, x2, y2):
+    def calculate_bearing(self, x1, y1, x2, y2):
         '''
         Calculates the bearing between the fishes.
         x1, y1: Coordinates of fish 1.
@@ -72,13 +74,13 @@ class DataPreparator:
         angle_rad = math.atan2(y2 - y1, x2 - x1)
         return (angle_rad + 2 * math.pi) % (2 * math.pi)
     
-    def calculate_angle(vx: float, vy: float) -> float:
+    def calculate_angle(self, vx: float, vy: float) -> float:
         '''
         Calculate the angle based on the (vx, vy) velocity vector, which points in the direction the fish is moving at a given moment from x- achses.
         '''
         return np.arctan2(vy, vx)
 
-    def orientation_difference(angle_focal, angle_neighbour):
+    def orientation_difference(self, angle_focal, angle_neighbour):
         '''
         Calculate for each time step, the orientation difference between the focal fish and its neighbours by computing the angle between their velocity vectors.
         '''
@@ -92,10 +94,12 @@ class DataPreparator:
         return difference
     
     
-    def process_data(file_path, focal_fish =3):
+    def process_data(self, file_path, focal_fish =3):
         '''
         The function creates the feature.csv file. 
         '''
+
+        data_prep = DataPreparator()
 
         with open(file_path) as csv_file:
             reader = csv.DictReader(csv_file, delimiter=';')
@@ -132,12 +136,12 @@ class DataPreparator:
                 x_coordinate.append(float(row['X']))
                 y_coordinate.append(float(row['Y']))
 
-            velocities = calculate_velocity(kick_times, x_coordinate, y_coordinate)
-            vx, vy = velocity_vector(kick_times, x_coordinate, y_coordinate)
+            velocities = data_prep.calculate_velocity(kick_times, x_coordinate, y_coordinate)
+            vx, vy = data_prep.velocity_vector(kick_times, x_coordinate, y_coordinate)
 
             for i in range(len(rows)):
                 velocity = velocities[i]
-                angle = calculate_angle(vx[i], vy[i])
+                angle = data_prep.calculate_angle(vx[i], vy[i])
                 
                 rows[i]['Velocity_Between_Kicks'] = velocity
                 rows[i]['Angle'] = angle
@@ -193,9 +197,9 @@ class DataPreparator:
                     y_coordinate = float(row['Y'])
                     angle = float(row['Angle'])
 
-                    neighbour_copy['Distance_To_Focal'] = calculate_distance(focal_x_coordinate, focal_y_coordinate, x_coordinate, y_coordinate)
-                    neighbour_copy['Bearing_To_Focal'] = calculate_bearing(focal_x_coordinate, focal_y_coordinate, x_coordinate, y_coordinate)
-                    neighbour_copy['Orientation_Difference_To_Focal'] = orientation_difference(focal_angle, angle)
+                    neighbour_copy['Distance_To_Focal'] = data_prep.calculate_distance(focal_x_coordinate, focal_y_coordinate, x_coordinate, y_coordinate)
+                    neighbour_copy['Bearing_To_Focal'] = data_prep.calculate_bearing(focal_x_coordinate, focal_y_coordinate, x_coordinate, y_coordinate)
+                    neighbour_copy['Orientation_Difference_To_Focal'] = data_prep.orientation_difference(focal_angle, angle)
 
                     
                     neighbour_copy['vx'] = float(row['vx'])
@@ -214,7 +218,7 @@ class DataPreparator:
             writer.writeheader()
             writer.writerows(features)
 
-    def add_step_count(file_path):
+    def add_step_count(self, file_path):
         '''
         Adds a column step to the feature.csv file.
         
@@ -264,7 +268,7 @@ class DataPreparator:
             writer.writeheader()
             writer.writerows(data)
 
-    def orientation_velocity(file_path):
+    def orientation_velocity(self, file_path):
         kick_times = {}
         with open(file_path) as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter = ",")
@@ -284,7 +288,7 @@ class DataPreparator:
                 kick_times[kick_time].append((agent_id, vx, vy))
         return kick_times
     
-    def compute_csv(file_path, agent_id, experiment_id):
+    def compute_csv(self, file_path, agent_id, experiment_id):
         """
         The following function generates a file for experiement 151, specifically for fish id 3,  which contains all necessary information used for the objective function.
         agent_id: The ID of the focal fish. Agent ID = 3.
@@ -304,7 +308,9 @@ class DataPreparator:
                     y = float(row['Y'])
                     kicktime = float(row['Kick_Time'])
 
-                    radius_vector, tangent, x_wall, y_wall, wall_distance = distance_wall(x, y, vx, vy, kicktime)
+                    wall_behaviour = WallBehaviour()
+
+                    radius_vector, tangent, x_wall, y_wall, wall_distance = wall_behaviour.distance_wall(x, y, vx, vy, kicktime)
 
                     if kicktime not in data_dict:
                         data_dict[kicktime] = {

@@ -6,7 +6,7 @@ import math
 
 class WallBehaviour:
 
-    def bias_wall(data_dict, kicktime, heading, mode):
+    def bias_wall(self, data_dict, kicktime, heading, mode):
         '''
         The function simulates the wall influence.
         data_dict: Data from the file.
@@ -25,7 +25,7 @@ class WallBehaviour:
         
         return np.array(data_dict[kicktime]['radius_vectors'][0])
     
-    def bias_wall_zone(data_dict, kicktime, heading, mode):
+    def bias_wall_zone(self, data_dict, kicktime, heading, mode):
         '''
         The function simulates different fish movements based on the focal fish distance to the wall.
         data_dict: Data from the file.
@@ -92,7 +92,7 @@ class WallBehaviour:
                 smooth = ((repulsion - wall_distance) / (align - repulsion)) * -1
                 return (1 - smooth) * radial_vector + smooth * tangent_vector
             
-    def distance_wall(x, y, vx, vy, kicktime, radius = 0.25):
+    def distance_wall(self, x, y, vx, vy, kicktime, radius = 0.25):
         '''
         The function simulates the wall influence.
         x: Is the current x position of the focal fish.

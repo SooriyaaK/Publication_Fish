@@ -2,14 +2,10 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import csv
 import numpy as np
-import random
-import math
 import os
-from datetime import datetime
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
-from matplotlib.patches import Circle, Wedge
-import pandas as pd
+from matplotlib.patches import Circle
 from sklearn.decomposition import PCA
 from sklearn.cluster import AgglomerativeClustering
 
@@ -45,7 +41,7 @@ class ResultsPlotter:
         plt.tight_layout()
         plt.show()
 
-    def generation_filter(folder_path, file_name, bias_flag = True, generation = 99):
+    def generation_filter(self, folder_path, file_name, bias_flag = True, generation = 99):
         """
         The function extracts normalized weights and its corresponding fitness values for generation 99 for 20 from a CSV file.
 
@@ -102,7 +98,7 @@ class ResultsPlotter:
             
         return results
     
-    def compare_boxplot(cosine_dict, mse_kicktime_dict, mse_trajectory_dict):
+    def compare_boxplot(self, cosine_dict, mse_kicktime_dict, mse_trajectory_dict):
         """
         result_dict = {'orientation': [], 'distance': [], 'bearing': []}
         The function creates 3 boxplot for each loss function.
@@ -151,7 +147,7 @@ class ResultsPlotter:
         
         plt.show()
 
-    def plot_weights_per_run(results, file_name):
+    def plot_weights_per_run(self, results, file_name):
         """
         Plot weight vectors for each run.
         results: list of tuples (run, fitness, w1, w2, w3, w4, w5, w6)
@@ -210,7 +206,7 @@ class ResultsPlotter:
         by_label = dict(zip(labels, handles))
         plt.legend(by_label.values(), by_label.keys(), loc='upper right', fontsize=12)
 
-        ax.grid(True, linestyle='--', alpha=0.5)
+        plt.gca().grid(True, linestyle='--', alpha=0.5)
         plt.tight_layout()
         plt.savefig(f"{file_name}_weight_values_across_runs_at_generation_100.svg")
         plt.savefig(f"{file_name}_weight_values_across_runs_at_generation_100.png")
@@ -222,7 +218,7 @@ class ResultsPlotter:
         plt.show()
 
 
-    def plot_trajectories(plot_data):
+    def plot_trajectories(self, plot_data):
         '''Plot actual vs predicted trajectories for a focal agent - kick times.'''
         actual_x, actual_y = [], []
         pred_x, pred_y = [], []
@@ -280,7 +276,7 @@ class ResultsPlotter:
         plt.savefig("trajectory.svg", format="svg", bbox_inches='tight')
         plt.savefig("trajectory.png", format="png", dpi=300, bbox_inches='tight')
 
-    def predicted_velocity(load):
+    def predicted_velocity(self, load):
         '''Plot actual vs predicted trajectories for a focal agent - kick times.'''
         kicktimes = []
         x_coords = []
@@ -307,11 +303,13 @@ class ResultsPlotter:
         circle_center = (0, 0)
         circle_radius = 0.25
 
+        ax = plt.gca()
+
         # Create and add the circle
         circle = Circle(circle_center, circle_radius, color='black', fill=False)
-        plt.gca().add_patch(circle)
+        ax.add_patch(circle)
 
-        plt.gca().set_aspect('equal', adjustable='box')
+        ax.set_aspect('equal', adjustable='box')
 
         # Formatting
         ax.set_aspect('equal')
@@ -334,7 +332,7 @@ class ResultsPlotter:
         plt.savefig(f"actual_vs_predicted_velocities_mse_kicktime.svg")
         plt.show()
 
-    def pca(results, file_name):
+    def pca(self, results, file_name):
         """
         The function does PCA on weight vectors across runs and visualize clustering.
 
@@ -356,7 +354,7 @@ class ResultsPlotter:
 
         # Plot PCA
         plt.figure(figsize=(10, 10))
-        ax.scatter(pca_model[:, 0], pca_model[:, 1], color='steelblue', s=40)
+        plt.gca().scatter(pca_model[:, 0], pca_model[:, 1], color='steelblue', s=40)
 
         for i, label in enumerate(runs):
             plt.text(pca_model[i, 0], pca_model[i, 1], label, fontsize=9)
@@ -368,14 +366,14 @@ class ResultsPlotter:
         plt.xlabel('Principal Component 1')
         plt.ylabel('Principal Component 2')
         plt.title(f'PCA of Weights - Agglomerative Clustering', fontsize = 25)
-        ax.grid(True, linestyle='--', alpha=0.5)
+        plt.gca().grid(True, linestyle='--', alpha=0.5)
         plt.tight_layout()
         plt.savefig(f"{file_name}_PCA_weights.png")
         plt.savefig(f"{file_name}_PCA_weights.svg")
         plt.savefig(f"{file_name}_PCA_weights.pdf")
         plt.show()
 
-    def plot_pca_with_vectors(self):
+    def plot_pca_with_vectors(self, results):
         # Draw vectors to understand PCA better
 
         # 1. Extract weights/runs

@@ -1,4 +1,4 @@
-
+import numpy as np
 
 def objective_function(bias_flag, bias_func, velocity_file, data_dict, mode, dim, loss, weights, focal_agent = 3, experiment_id = 151):  
    

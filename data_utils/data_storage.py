@@ -4,12 +4,18 @@ import random
 import csv
 import math
 
+import data_utils.analysis_utils as au
+import experiments.objective_function as of
+from data_utils.data_ranking import DataRanker
+from data_utils.data_storage import DataStorageHandler
+from visualisation.results_plotting import ResultsPlotter
+
 
 class DataStorageHandler:
     def __init__(self):
         pass
 
-    def load_processed_data(file_path):
+    def load_processed_data(self, file_path):
         '''
         The function reads the data from the create feature_151.csv file.
         '''
@@ -58,7 +64,7 @@ class DataStorageHandler:
 
         return data_dict
     
-    def load_data(filepath, data_dict, prediction, focal_agent = 3, experiment_id = 151):
+    def load_data(self, filepath, data_dict, prediction, focal_agent = 3, experiment_id = 151):
         """
         The function loads the csv data of agent positions, velocities, adds predicted velocities.
         filepath: str. Path to the file.
@@ -112,7 +118,7 @@ class DataStorageHandler:
         return plot_data
 
     
-    def orientation_velocity(file_path):
+    def orientation_velocity(self, file_path):
         kick_times = {}
         with open(file_path) as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter = ",")
@@ -129,7 +135,7 @@ class DataStorageHandler:
 
         return kick_times
     
-    def save_to_csv(all_x_values, all_fitness_values, filename="all_runs_best_solution.csv"):
+    def save_to_csv(self, all_x_values, all_fitness_values, filename="all_runs_best_solution.csv"):
         """Save all x values and their corresponding fitness values from all runs to a single CSV file."""
         with open(filename, mode='w', newline='') as file:
             writer = csv.writer(file)
@@ -142,7 +148,7 @@ class DataStorageHandler:
                 for generation, (best_x, best_fitness) in enumerate(zip(x_values, f_values)):
                     writer.writerow([run, generation, best_x, best_fitness])
 
-    def save_loss_evaluation(evaluation_file):
+    def save_loss_evaluation(self, evaluation_file, configurations):
         '''
         The function evaluate and save loss metrics for each model configurations.
         The function iterates over velocity types, bias configurations, and loss functions.
@@ -155,48 +161,31 @@ class DataStorageHandler:
         loss_function = ['cosine', 'mse_kicktime', 'mse_trajectory']
         sorted_velocity_types = ['orientation', 'distance', 'bearing']
 
+        ranker = DataRanker()
+        storage_handler = DataStorageHandler()
+        plotter = ResultsPlotter()
+
         # Write the file
         with open(evaluation_file, 'w', newline = '') as f:
             writer = csv.writer(f)
             header = ['Model', 'Fitness EA', 'Weighs', 'Bias_Mode', 'Cosine', 'MSE Kicktime', 'MSE_Trajectory', 'Sorted Velocity Criteria']
             writer.writerow(header) 
-            data_dict = load_processed_data("features_151.csv")
-
-            bias_configurations = [
-            {
-                "name": "bias_wall_zone", 
-                "bias_function": bias_wall_zone, 
-                "flag": True, 
-                "loss": loss_function, 
-                "modes": [
-                            'bias_wall_zone_repulsion_zone',
-                            'bias_wall_zone_alignment_zone',
-                            'bias_wall_zone_alignment_domain',
-                            'bias_wall_zone_repulsion_alignment_zone',
-                            'bias_wall_zone_repulsion_alignment_domain',
-                                    ]
-            },
-            {"name": "bias_zero", "bias_function": bias_zero, "flag": False, "loss": loss_function, "modes": [None]},
-            {"name": "bias_random", "bias_function": bias_random, "flag": True, "loss": loss_function, "modes": [None]},
-            {"name": "bias_wall", "bias_function": bias_wall, "flag": True, "loss": loss_function, "modes": [None]},
-            {"name": "bias_positive", "bias_function": bias_positive, "flag": True, "loss": loss_function, "modes": [None]},
-            {"name": "bias_negative", "bias_function": bias_negative, "flag": True, "loss": loss_function, "modes": [None]},
-            ]
+            data_dict = storage_handler.load_processed_data("features_151.csv")
 
             for types in sorted_velocity_types:
                 # Load the corresponding file
                 if types == 'orientation':
-                    velocity_file = velocity("orientation_difference_151.csv")
+                    velocity_file = ranker.velocity("orientation_difference_151.csv")
                 elif types == 'distance':
-                    velocity_file = velocity("distance_difference_151.csv")
+                    velocity_file = ranker.velocity("distance_difference_151.csv")
                 elif types == 'bearing':
-                    velocity_file = velocity("bearing_difference_151.csv")
+                    velocity_file = ranker.velocity("bearing_difference_151.csv")
                 else:
                     print('File not found')
                     continue
                 
                 # Test each bias configuration and its modes
-                for config in bias_configurations:
+                for config in configurations:
                     for mode in config['modes']:
                         # Test each loss function in this configuration
                         for loss in config['loss']:
@@ -209,8 +198,8 @@ class DataStorageHandler:
                                 file_name = f"{types}_{loss}_results_{config['name']}"
                             
                             # EA results 
-                            results = generation_filter(folder_path, file_name, config['flag'], generation = 99)
-                            best_result = extract_min_fitness_value(results)
+                            results = plotter.generation_filter(folder_path, file_name, config['flag'], generation = 99)
+                            best_result = au.extract_min_fitness_value(results)
                             
                             # Extract the best weight and its fitness value
                             weights = best_result['weights']
@@ -221,7 +210,7 @@ class DataStorageHandler:
                             loss_dct = {}
                             for loss in loss_function:
 
-                                loss_value = objective_function(
+                                loss_value = of.objective_function(
                                     bias_flag = config['flag'],
                                     bias_func = config['bias_function'],
                                     velocity_file = velocity_file,

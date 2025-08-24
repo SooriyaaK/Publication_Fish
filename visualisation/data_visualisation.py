@@ -1,16 +1,8 @@
-import csv
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-import math
-import os
-from datetime import datetime
-import seaborn as sns
-from sklearn.preprocessing import StandardScaler
-from matplotlib.patches import Circle, Wedge
+from matplotlib.patches import Circle
 import pandas as pd
-from sklearn.decomposition import PCA
-from sklearn.cluster import AgglomerativeClustering
 
 class DataVisualisator:
 
@@ -137,7 +129,7 @@ class DataVisualisator:
         plt.savefig("data.png", format="png", dpi=300, bbox_inches='tight')
 
 
-    def plot_neighbors_and_focal(load, features_csv, experiment_id, target_kicktime, focal_id=3):
+    def plot_neighbors_and_focal(self, load, features_csv, experiment_id, target_kicktime, focal_id=3):
 
         df = pd.read_csv(features_csv)
         df = df[df['Experiment_ID'] == experiment_id]
@@ -203,13 +195,13 @@ class DataVisualisator:
         neigh_handles = []
         neigh_labels = []
         for rank in [1, 2, 3, 4]:
-            neigh_handles.append(Line2D([0], [0], color=rank_colors[rank], lw=3))
+            neigh_handles.append(plt.Line2D([0], [0], color=rank_colors[rank], lw=3))
             neigh_labels.append(f"{rank}ᵗʰ Nearest")
 
         focal_handles = []
         focal_labels = []
         for color, label in [('blue', 'Focal Actual'), ('red', 'Focal Predicted')]:
-            focal_handles.append(Line2D([0], [0], color=color, lw=3))
+            focal_handles.append(plt.Line2D([0], [0], color=color, lw=3))
             focal_labels.append(label)
 
         ax.legend(
@@ -227,7 +219,7 @@ class DataVisualisator:
 
         plt.show()
 
-    def plot_wall_zones_with_distance_line(tank_radius=0.25):
+    def plot_wall_zones_with_distance_line(self, tank_radius=0.25):
         fig, ax = plt.subplots(figsize=(6,6))
 
         # Tank boundary

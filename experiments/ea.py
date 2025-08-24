@@ -11,7 +11,7 @@ class EA:
     def __init__(self, config:Config):
         self.config = config
 
-    def initialization(population_size, num_dimensions):
+    def initialization(self, population_size, num_dimensions):
         """
         Initialize the starting population with random individuals.
         Each gene of an individual corresponds a dimension in the function
@@ -23,7 +23,7 @@ class EA:
         # print(f'Initialization x: {x}')
         return x
     
-    def objective_function(bias_flag, bias_func, bearing_file, data_dict, mode, dim, loss, c = None, focal_agent = 3, experiment_id = 151):  
+    def objective_function(self, bias_flag, bias_func, bearing_file, data_dict, mode, dim, loss, c = None, focal_agent = 3, experiment_id = 151):  
         """
         Computes the loss between predicted and actual velocities for a focal fish.
         bias_flag: bool -> If bias_flag is True = dim 6.
@@ -168,7 +168,7 @@ class EA:
 
         return mse_loss
     
-    def evaluation(x, objective_function, bias_flag, bias_func, orientation_file, data_dict, mode, dim, loss): 
+    def evaluation(self, x, objective_function, bias_flag, bias_func, orientation_file, data_dict, mode, dim, loss): 
         """Evaluate the fitness of the population members"""
 
         fitness = []
@@ -181,7 +181,7 @@ class EA:
         fitness = np.array(fitness) #converting the stored list into an numpy array
         return fitness
     
-    def mutation(x, mutation_rate):
+    def mutation(self, x, mutation_rate):
         """
         Apply mutation by adding small Gaussian noise to each element.
     
@@ -197,10 +197,10 @@ class EA:
         return x
     
 
-    def crossover(x_parents, p_crossover, objective_function,  bias_flag, bias_func, orientation_file, data_dict, mode, dim, loss):
+    def crossover(self, x_parents, p_crossover, objective_function,  bias_flag, bias_func, orientation_file, data_dict, mode, dim, loss):
         """Perform crossover to create offsprings."""
 
-        fitness = evaluation(x_parents, objective_function, bias_flag, bias_func, orientation_file, data_dict, mode, dim, loss) # Evaluate fitness of parents
+        fitness = self.evaluation(x_parents, objective_function, bias_flag, bias_func, orientation_file, data_dict, mode, dim, loss) # Evaluate fitness of parents
         best_fitness = np.argsort(fitness) # Sorted based on fitness to find the minimum
         num_parents = len(x_parents)
         num_dimensions = len(x_parents[0])
@@ -226,7 +226,7 @@ class EA:
 
         return offspring
     
-    def parent_selection(x, f, k):
+    def parent_selection(self, x, f, k):
         """Select parents for the next generation"""
 
         x_array = np.array(x)
@@ -246,7 +246,7 @@ class EA:
 
         return np.array(matching_pool_x), np.array(matching_pool_f)
     
-    def survivor_selection(x, f, x_offspring, f_offspring):
+    def survivor_selection(self, x, f, x_offspring, f_offspring):
         """Select the survivors, for the population of the next generation"""
 
         #Concatenate parents ans their offspring
@@ -268,6 +268,7 @@ class EA:
         return x, f
     
     def ea(
+        self,
         # hyperparameters of the algorithm
         population_size,
         max_fit_evals,  # Maximum number of evaluations
@@ -287,7 +288,7 @@ class EA:
     
         # Calculate the maximum number of generations
         # Maximum number of function evaluations should be the same independent of the population size
-        x = initialization(population_size, dimensions)
+        x = self.initialization(population_size, dimensions)
         print(f"Initial population shape: {x.shape}")  # Should be (population_size, 6)
         
         max_generations = 100 
@@ -298,7 +299,7 @@ class EA:
         ################################################################
         # PLEASE FILL IN
         # x = initialization(population_size, dimensions)
-        f = evaluation(x, objective_function, bias_flag, bias_func, orientation_file, data_dict, mode, dimensions, loss)
+        f = self.evaluation(x, objective_function, bias_flag, bias_func, orientation_file, data_dict, mode, dimensions, loss)
         ################################################################
 
         # Find the best individual and append to a list to keep track in each generation
@@ -311,13 +312,13 @@ class EA:
         # Loop over the generations
         for gen in range(max_generations - 1):
             # Perform the EA steps
-            x_parents, f_parents = parent_selection(x, f, k)
+            x_parents, f_parents = self.parent_selection(x, f, k)
             # print(len(x), len(x_parents))
 
-            x_offspring = crossover(x_parents, p_crossover, objective_function, bias_flag, bias_func, orientation_file, data_dict, mode, dimensions, loss)
-            x_offspring = mutation(x_offspring, mutation_rate= m_rate)
-            f_offspring = evaluation(x_offspring, objective_function, bias_flag, bias_func, orientation_file, data_dict, mode, dimensions, loss)
-            x,f= survivor_selection(x, f, x_offspring, f_offspring)
+            x_offspring = self.crossover(x_parents, p_crossover, objective_function, bias_flag, bias_func, orientation_file, data_dict, mode, dimensions, loss)
+            x_offspring = self.mutation(x_offspring, mutation_rate= m_rate)
+            f_offspring = self.evaluation(x_offspring, objective_function, bias_flag, bias_func, orientation_file, data_dict, mode, dimensions, loss)
+            x,f= self.survivor_selection(x, f, x_offspring, f_offspring)
             
             ################################################################
             

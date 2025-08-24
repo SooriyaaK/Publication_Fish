@@ -4,15 +4,12 @@ from scipy.stats import levene
 from scipy import stats
 import pandas as pd
 import numpy as np
-from statsmodels.stats.anova import AnovaRM
-import matplotlib.pyplot as plt
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from sklearn.decomposition import PCA
-
 
 class StatsAnalyser:
 
@@ -306,7 +303,7 @@ class StatsAnalyser:
 
     def perform_shapiro_wilks_test(self, data):
         # Shapiro Wilk Test
-        res = stats.shapiro(data)
+        res = shapiro(data)
         p = res.statistic
         print(f'Shapiro WIlk Test {p}')
 

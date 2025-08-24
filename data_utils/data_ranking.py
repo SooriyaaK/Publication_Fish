@@ -1,8 +1,8 @@
-
+import csv
 
 class DataRanker:
 
-    def process_velocity_differences(file_path, focal_fish = 3):
+    def process_velocity_differences(self, file_path, focal_fish = 3):
         '''
         The function writes a "Velocity_Differences.csv" file.
         '''
@@ -64,7 +64,7 @@ class DataRanker:
                         writer.writerow(row)
 
 
-    def process_distance_differences(file_path, focal_fish = 3):
+    def process_distance_differences(self, file_path, focal_fish = 3):
         '''
         This function writes a "Distance_Differences.csv" file.   
         
@@ -122,7 +122,7 @@ class DataRanker:
                             print(f"Kick Time {kick_time} | Agent {agent_id} | Distance: {distance:.4f} | vx: {vx} | vy: {vy}")
                             writer.writerow([experiment_id, agent_id, kick_time, distance, vx, vy])
 
-    def process_distance_differences(file_path, focal_fish = 3):
+    def process_distance_differences(self, file_path, focal_fish = 3):
         '''
         The function writes a "distance_difference_151.csv" file, which processes focal fish with the ID =3 and the relative distance to each fish. 
         '''
@@ -175,7 +175,7 @@ class DataRanker:
                         writer.writerow([agent_id, kick_time, distance_difference, vx, vy])
 
 
-    def process_bearing_differences(file_path, focal_fish = 3):
+    def process_bearing_differences(self, file_path, focal_fish = 3):
         '''
         This function writes a "Bearing_Differences.csv" file.
         
@@ -240,7 +240,7 @@ class DataRanker:
                             print(f"Kick Time {kick_time} | Agent {agent_id} | Bearing: {bearing:.4f} | vx: {vx} | vy: {vy}")
                             writer.writerow([experiment_id, agent_id, kick_time, bearing, vx, vy])
 
-    def process_orientation_differences(file_path, focal_fish = 3):
+    def process_orientation_differences(self, file_path, focal_fish = 3):
         '''
         This function writes a "Orientation_Differences.csv" file.
         '''
@@ -305,7 +305,7 @@ class DataRanker:
                             print(f"Kick Time {kick_time} | Agent {agent_id} | Orientation Difference: {orientation_difference:.4f}| vx: {vx} | vy: {vy}")
                             writer.writerow([experiment_id, agent_id, kick_time, orientation_difference, vx, vy])
 
-    def velocity(file_path):
+    def velocity(self, file_path):
         kick_times = {}
         with open(file_path) as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter = ",")
