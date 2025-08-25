@@ -28,7 +28,7 @@ class ObjectiveFunctionEvaluator:
                 if len(timesteps) < 2:
                     continue  # cannot compute velocity with <2 timesteps
 
-                for i in range(len(timesteps)-1):
+                for i in range(1, len(timesteps)-1):
                     t = timesteps[i]
                     t_next = timesteps[i+1]
 

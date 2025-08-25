@@ -13,7 +13,7 @@ class ConfigOrientationNoWallCosine(Config):
     # GENERAL
     # --------------------------------------------------------------
     name: string = "lei2020_orientation_without_wall_cosine" # the name - used for file name generation. Ideally unique
-    iterations: int = 10 # number of iterations for the experiment
+    iterations: int = 50 # number of iterations for the experiment
 
     # --------------------------------------------------------------
     # DATA
