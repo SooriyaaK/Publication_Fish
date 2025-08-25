@@ -6,6 +6,10 @@ class DataStorageHandler:
     # LOADING
     # -------------------------------------------------------------------
 
+    def load_csv_file_to_dataframe(self, file_path, headers):
+        return pd.read_csv(file_path, delim_whitespace=True, header=None, names=headers)
+    
+
     def load_processed_data(self, file_path, exp_ids=None, sort_by=None, ascending=True):
         df = pd.read_csv(file_path)
 
