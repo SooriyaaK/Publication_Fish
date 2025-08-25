@@ -14,41 +14,31 @@ class ObjectiveFunctionEvaluator:
         self.data_dict = data_dict
         self.wall_behaviour: WallBehaviour = WallBehaviour()
 
-    def objective_function(self, weights: np.array):  
-        """
-        Computes the loss between predicted and actual velocities for a focal fish.
-        bias_flag: bool -> If bias_flag is True = dim 6.
-        bias_func: Function to compute the bias vector.
-        bearing_file: Dictionary containing the sorted information.
-        data_dict: Dictionary with all relevant information.
-        mode: String. Mode used in the bias function -> wall_zone.
-        dim: Integer value - Dimension of the weights.
-        loss: String. Type of loss function['cosine', 'mse_kicktime', mse_trajectory]
-        c: [None] weights for the vector. Initially None, picked later at random - array.
-        focal_agent: Integer value. Agent selected to model its behaviour - replace.
-        experiemnt_id: Integer value. Experiment filter. 
-        returns: float - Fitness - loss value.
-        """
-
-        # -------------- PREPARE WEIGHTS ---------------------------------------------------------------------
+    def objective_function(self, weights: np.array):
         weights = self._prepare_weights(self.config, weights)
-
-        # -------------- EVALUATE INDIVIDUAL EXPERIMENTS AND FISH --------------------------------------------
         mse_loss = 0.0
-        
+
         for exp_id in self.config.experiment_ids:
-            if exp_id not in self.data_dict.keys():
-                raise Exception(f"The specified experiment id {exp_id} is not present in the loaded data.")
+            if exp_id not in self.data_dict:
+                raise Exception(f"Experiment id {exp_id} not in data.")
             exp_data_dict = self.data_dict[exp_id]
 
             for fish_id in self.config.fish_ids:
-                predicted_velocity = np.array([exp_data_dict[1]['vx_list'][fish_id], exp_data_dict[1]['vy_list'][fish_id]])
+                timesteps = sorted(exp_data_dict.keys())
+                if len(timesteps) < 2:
+                    continue  # cannot compute velocity with <2 timesteps
 
-                for t in range(1, max(exp_data_dict.keys())):
-                    actual_next_velocity = np.array([exp_data_dict[t+1]['vx_list'][fish_id], exp_data_dict[t+1]['vy_list'][fish_id]])
-                    
+                for i in range(len(timesteps)-1):
+                    t = timesteps[i]
+                    t_next = timesteps[i+1]
+
+                    actual_next_velocity = np.array([
+                        exp_data_dict[t_next]['vx_list'][fish_id],
+                        exp_data_dict[t_next]['vy_list'][fish_id]
+                    ])
+
+                    # --- compute predicted velocity ---
                     sorted_indices = self.get_sorted_neighbors(exp_data_dict, t, fish_id, self.config.sorting_criteria)
-
                     vx = exp_data_dict[t]['vx_list'][sorted_indices]
                     vy = exp_data_dict[t]['vy_list'][sorted_indices]
 
@@ -57,24 +47,29 @@ class ObjectiveFunctionEvaluator:
                         predicted_velocity[0] += weights[rank] * vx[rank]
                         predicted_velocity[1] += weights[rank] * vy[rank]
 
+                    # --- add wall velocity if enabled ---
                     if self.config.wall_behaviour != WallBehaviourType.NO_WALL:
                         bias = self.wall_behaviour.compute_wall_velocity(self.config.wall_behaviour)
-                        vx_total += bias[0] * weights[-1]  # Multiply by the bias agent's weight
-                        vy_total += bias[1] * weights[-1]  # Multiply by the bias agent's weight
-            
-                predicted_velocity = np.array(predicted_velocity)  
+                        predicted_velocity[0] += bias[0] * weights[-1]
+                        predicted_velocity[1] += bias[1] * weights[-1]
 
-                # -------------- COMPUTE LOSS -----------------------------------     
-                match self.config.loss_function:
-                    case LossFunctions.COSINE:
-                        mse_loss += self.cosine_loss(actual_velocity=actual_next_velocity,
-                                                predicted_velocity=predicted_velocity)
-                    case LossFunctions.MSE_KICKTIME:
-                        actual_position = np.array([exp_data_dict[t]['x_coords'][fish_id], exp_data_dict[t]['y_coords'][fish_id]])
-                        actual_next_position = np.array([exp_data_dict[t+1]['x_coords'][fish_id], exp_data_dict[t+1]['y_coords'][fish_id]])
-                        mse_loss += self.mse_kicktime(current_position=actual_position,
-                                                actual_next_position=actual_next_position,
-                                                predicted_velocity=predicted_velocity)
+                    # --- compute loss ---
+                    match self.config.loss_function:
+                        case LossFunctions.COSINE:
+                            mse_loss += self.cosine_loss(actual_velocity=actual_next_velocity,
+                                                        predicted_velocity=predicted_velocity)
+                        case LossFunctions.MSE_KICKTIME:
+                            actual_position = np.array([
+                                exp_data_dict[t]['x_coords'][fish_id],
+                                exp_data_dict[t]['y_coords'][fish_id]
+                            ])
+                            actual_next_position = np.array([
+                                exp_data_dict[t_next]['x_coords'][fish_id],
+                                exp_data_dict[t_next]['y_coords'][fish_id]
+                            ])
+                            mse_loss += self.mse_kicktime(current_position=actual_position,
+                                                        actual_next_position=actual_next_position,
+                                                        predicted_velocity=predicted_velocity)
         return mse_loss
 
     def cosine_loss(self, actual_velocity, predicted_velocity):
@@ -145,8 +140,3 @@ class ObjectiveFunctionEvaluator:
 
         sorted_indices = np.argsort(values)
         return sorted_indices
-
-
-    DISTANCE = "distance",
-    ORIENTATION = "orientation",
-    BEARING = "bearing"

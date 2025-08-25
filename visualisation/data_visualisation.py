@@ -4,6 +4,10 @@ import random
 from matplotlib.patches import Circle
 import pandas as pd
 
+"""
+TODO: test and fix before use
+"""
+
 class DataVisualisator:
 
     def visualise_entire_experiment(self):

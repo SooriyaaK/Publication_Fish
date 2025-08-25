@@ -9,6 +9,9 @@ from matplotlib.patches import Circle
 from sklearn.decomposition import PCA
 from sklearn.cluster import AgglomerativeClustering
 
+"""
+TODO: test and fix before use
+"""
 class ResultsPlotter:
 
     def __init__(self):

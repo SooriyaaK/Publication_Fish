@@ -3,6 +3,10 @@ from sklearn.preprocessing import StandardScaler
 
 from visualisation.results_plotting import ResultsPlotter
 
+"""
+TODO: test and fix before analysis
+"""
+
 def extract_min_fitness_value(self, results):
     '''
     Extract from the csv file the corresponding min fitnessvalue and their respective weights 

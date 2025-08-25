@@ -27,6 +27,9 @@ Before any experiments can be run, you need to make sure that the augmented data
 
 Once this is ensured, create a config under configs/ to suit your experimental needs. Then create a run script and run.
 
+## Testing
+This implementation comes with a set of tests which can be run by running 'pytest' or 'python -m pytest' in the terminal.
+
 ## Libraries
 -Python (3.12.3)
 -NumPy
@@ -35,3 +38,4 @@ Once this is ensured, create a config under configs/ to suit your experimental n
 -SciPy
 -Scikit-learn
 -Seaborn
+-PyTest

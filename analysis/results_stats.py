@@ -11,6 +11,10 @@ from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from sklearn.decomposition import PCA
 
+"""
+TODO: test and fix before analysis
+"""
+
 class StatsAnalyser:
 
     def __init__(self):
