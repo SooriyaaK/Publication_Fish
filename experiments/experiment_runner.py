@@ -15,8 +15,8 @@ class ExperimentRunner:
     def run_experiments(self):
         print(f"running experiments with {self.config.name}")
         
-        data_dict = self.storage_handler.load_processed_data(self.config.data_file_path,
-                                                        self.config.experiment_ids)
+        data_dict = self.storage_handler.load_processed_data(file_path=self.config.data_file_path,
+                                                             exp_ids=self.config.experiment_ids)
         
         all_runs_f = []
         all_runs_x = []

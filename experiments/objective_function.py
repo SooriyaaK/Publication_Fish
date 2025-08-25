@@ -3,6 +3,7 @@ from typing import Dict
 
 from configs.config import Config
 from enums.loss_functions_enum import LossFunctions
+from enums.sorting_criteria_enum import SortingCriteria
 from enums.wall_behaviour_enum import WallBehaviourType
 from experiments.wall_behaviour import WallBehaviour
 
@@ -46,18 +47,20 @@ class ObjectiveFunctionEvaluator:
                 for t in range(1, max(exp_data_dict.keys())):
                     actual_next_velocity = np.array([exp_data_dict[t+1]['vx_list'][fish_id], exp_data_dict[t+1]['vy_list'][fish_id]])
                     
-                    vx = exp_data_dict[t]['vx_list']
-                    vy = exp_data_dict[t]['vy_list']
+                    sorted_indices = self.get_sorted_neighbors(exp_data_dict, t, fish_id, self.config.sorting_criteria)
 
-                    predicted_velocity = [0, 0]
-                    for fish in range(len(vx)):
-                        predicted_velocity[0] += weights[fish] * vx[fish]
-                        predicted_velocity[1] += weights[fish] * vy[fish]
-                    
+                    vx = exp_data_dict[t]['vx_list'][sorted_indices]
+                    vy = exp_data_dict[t]['vy_list'][sorted_indices]
+
+                    predicted_velocity = np.zeros(2)
+                    for rank, idx in enumerate(sorted_indices):
+                        predicted_velocity[0] += weights[rank] * vx[rank]
+                        predicted_velocity[1] += weights[rank] * vy[rank]
+
                     if self.config.wall_behaviour != WallBehaviourType.NO_WALL:
                         bias = self.wall_behaviour.compute_wall_velocity(self.config.wall_behaviour)
-                        vx_total += bias[0] * weights[5]  # Multiply by the bias agent's weight
-                        vy_total += bias[1] * weights[5]  # Multiply by the bias agent's weight
+                        vx_total += bias[0] * weights[-1]  # Multiply by the bias agent's weight
+                        vy_total += bias[1] * weights[-1]  # Multiply by the bias agent's weight
             
                 predicted_velocity = np.array(predicted_velocity)  
 
@@ -112,3 +115,38 @@ class ObjectiveFunctionEvaluator:
             weights = weights / norm
 
         return weights
+    
+    def get_sorted_neighbors(self, exp_data_dict, timestep, focal_fish_id, sorting_criteria):
+        """
+        Return indices of neighbors sorted by the given metric relative to focal fish.
+
+        Parameters
+        ----------
+        exp_data_dict : dict
+            Data for a single experiment.
+        timestep : int
+            Current timestep.
+        focal_fish_id : int
+            ID of the focal fish.
+        metric : str
+            Sorting metric: "distance", "bearing", or "orientation".
+        """
+        g = exp_data_dict[timestep]
+        fish_ids = g["fish_ids"]
+        focal_index = np.where(fish_ids == focal_fish_id)[0][0]
+
+        match sorting_criteria:
+            case SortingCriteria.DISTANCE:
+                values = g["distances"][focal_index]
+            case SortingCriteria.ORIENTATION:
+                values = g["orient_diffs"][focal_index]
+            case SortingCriteria.BEARING:
+                values = g["bearings"][focal_index]
+
+        sorted_indices = np.argsort(values)
+        return sorted_indices
+
+
+    DISTANCE = "distance",
+    ORIENTATION = "orientation",
+    BEARING = "bearing"

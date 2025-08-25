@@ -6,25 +6,7 @@ class DataStorageHandler:
     # LOADING
     # -------------------------------------------------------------------
 
-    def load_csv_file_to_dataframe(self, file_path, headers):
-        return pd.read_csv(file_path, delim_whitespace=True, header=None, names=headers)
-    
-
     def load_processed_data(self, file_path, exp_ids=None, sort_by=None, ascending=True):
-        """
-        Load processed CSV into a nested dict: {exp_id -> {timestep -> feature arrays}}.
-        
-        Parameters
-        ----------
-        file_path : str
-            Path to the processed CSV file.
-        exp_ids : list[int] or None
-            Experiment IDs to include. If None, include all.
-        sort_by : str or None
-            Column name to sort rows within each kicktime group. If None, no sorting.
-        ascending : bool
-            Sort order for the sort_by column.
-        """
         df = pd.read_csv(file_path)
 
         # Filter experiments if provided
@@ -35,12 +17,16 @@ class DataStorageHandler:
         for exp_id, exp_group in df.groupby("exp_id"):
             exp_dict = {}
             for timestep, g in exp_group.groupby("timestep"):
-                # Sort within each (exp_id, timestep) group if requested
                 if sort_by is not None and sort_by in g.columns:
                     g = g.sort_values(by=sort_by, ascending=ascending)
 
+                # Dynamically detect columns
+                dist_cols   = [c for c in g.columns if c.startswith("dist_to_fish_")]
+                bearing_cols = [c for c in g.columns if c.startswith("bearing_to_fish_")]
+                orient_cols  = [c for c in g.columns if c.startswith("orient_diff_to_fish_")]
+
                 exp_dict[timestep] = {
-                    "fish_ids": g["fish_id"].to_numpy(),   # keep track of fish identity
+                    "fish_ids": g["fish_id"].to_numpy(),
                     "x_coords": g["x"].to_numpy(),
                     "y_coords": g["y"].to_numpy(),
                     "vx_list": g["vx"].to_numpy(),
@@ -50,10 +36,15 @@ class DataStorageHandler:
                     "tangent_vectors": g[["tangent_x", "tangent_y"]].to_numpy(),
                     "radius_vectors": g[["repulse_x", "repulse_y"]].to_numpy(),
                     "wall_distances": g["dist_to_wall"].to_numpy(),
+                    "distances": g[dist_cols].to_numpy(),        # shape (n_fish, n_neighbors)
+                    "bearings": g[bearing_cols].to_numpy(),      # same shape
+                    "orient_diffs": g[orient_cols].to_numpy(),   # same shape
                 }
             data_dict[exp_id] = exp_dict
 
         return data_dict
+
+
     
     # -----------------------------------------------------------------------
     # SAVING
