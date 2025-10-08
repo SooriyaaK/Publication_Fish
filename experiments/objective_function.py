@@ -49,7 +49,11 @@ class ObjectiveFunctionEvaluator:
 
                     # --- add wall velocity if enabled ---
                     if self.config.wall_behaviour != WallBehaviourType.NO_WALL:
-                        bias = self.wall_behaviour.compute_wall_velocity(self.config.wall_behaviour)
+                        bias = self.wall_behaviour.compute_wall_velocity(wall_behaviour_type=self.config.wall_behaviour,
+                                                                         data_dict=self.data_dict,
+                                                                         t=t,
+                                                                         exp_id=exp_id,
+                                                                         fish_id=fish_id)
                         predicted_velocity[0] += bias[0] * weights[-1]
                         predicted_velocity[1] += bias[1] * weights[-1]
 

@@ -10,10 +10,10 @@ from enums.wall_behaviour_enum import WallBehaviourType
 
 class WallBehaviour:
 
-    def compute_wall_velocity(self, wall_behaviour_type:WallBehaviourType, data_dict:Dict, t:int, fish_id:int):
-        radial_vector = np.array(data_dict[t]['radius_vectors'][fish_id])
-        tangent_vector = np.array(data_dict[t]['tangent_vectors'][fish_id])
-        wall_distance = data_dict[t]['wall_distances'][fish_id]
+    def compute_wall_velocity(self, wall_behaviour_type:WallBehaviourType, data_dict:Dict, t:int, exp_id:int, fish_id:int):
+        radial_vector = np.array(data_dict[exp_id][t]['radius_vectors'][fish_id])
+        tangent_vector = np.array(data_dict[exp_id][t]['tangent_vectors'][fish_id])
+        wall_distance = data_dict[exp_id][t]['wall_distances'][fish_id]
         match wall_behaviour_type:
             case WallBehaviourType.REPULSION_ONLY:
                 velocity = self._compute_velocity_for_repulsion_zone(wall_distance=wall_distance,
