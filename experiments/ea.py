@@ -122,7 +122,7 @@ class EA:
     
     def run(self):
         x = self.initialization(self.config.population_size, self.config.dimensions)
-        print(f"Initial population shape: {x.shape}")  # Should be (population_size, 6)
+        #print(f"Initial population shape: {x.shape}")  # Should be (population_size, 6)
         
         f = self.evaluation(x)
 

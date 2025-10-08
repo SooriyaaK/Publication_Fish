@@ -12,6 +12,9 @@ class ExperimentRunner:
         self.save_location = save_location
         self.storage_handler = DataStorageHandler()
 
+        if self.config.name == None or self.config.name == "":
+            self.config.name = f"{self.config.dataset.label}_exp={self.config.experiment_ids}_ids={self.config.fish_ids}_{self.config.sorting_criteria.value}_{self.config.wall_behaviour.value}_{self.config.loss_function.value}"
+
     def run_experiments(self):
         print(f"running experiments with {self.config.name}")
         
@@ -21,7 +24,8 @@ class ExperimentRunner:
         all_runs_f = []
         all_runs_x = []
 
-        for _ in range(self.config.iterations):
+        for iter in range(self.config.iterations):
+            print(f"Running iteration {iter+1}/{self.config.iterations} for {self.config.name}")
             ea = EA(self.config, data_dict)
 
             x_best, f_best = ea.run()
