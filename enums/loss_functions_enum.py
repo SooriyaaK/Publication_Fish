@@ -5,4 +5,4 @@ Enum of loss functions
 """
 class LossFunctions(str, Enum):
     COSINE = "cosine",
-    MSE_KICKTIME = "mse_kicktime"
+    MSE_KICKTIME = "msekicktime"
