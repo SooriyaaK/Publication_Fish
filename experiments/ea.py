@@ -133,7 +133,7 @@ class EA:
         weights_best = [x_best[0]]
 
         # Loop over the generations
-        for gen in range(self.config.num_generations - 1):
+        for gen in range(self.config.num_generations):
             # Perform the EA steps
             x_parents, f_parents = self.parent_selection(x, f, self.config.k)
             # print(len(x), len(x_parents))
@@ -152,4 +152,7 @@ class EA:
             x_best.append(xi_best)
             f_best.append(fi_best)
 
+        if self.config.save_only_best_iteration:
+            x_best = [xi_best]
+            f_best = [fi_best]
         return x_best, f_best # return the best solution and fitness in each generation

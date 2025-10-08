@@ -8,12 +8,13 @@ from enums.wall_behaviour_enum import WallBehaviourType
 from configs.config import Config
 
 @dataclass
-class ConfigOrientationNoWallCosine(Config):
+class ConfigSpecific(Config):
     # --------------------------------------------------------------
     # GENERAL
     # --------------------------------------------------------------
-    name: string = "lei2020_orientation_without_wall_cosine" # the name - used for file name generation. Ideally unique
-    iterations: int = 50 # number of iterations for the experiment
+    name: string = None # the name - used for file name generation. Ideally unique. Is generated if it remains empty
+    iterations: int = 10 # number of iterations for the experiment
+    save_only_best_iteration: bool = True # if True, the best of each iteration will be saved, if False the best of every generation will be saved
 
     # --------------------------------------------------------------
     # DATA
@@ -33,8 +34,8 @@ class ConfigOrientationNoWallCosine(Config):
     # --------------------------------------------------------------
     # EA HYPERPARAMS
     # --------------------------------------------------------------
-    num_generations: int = 100 # number of generations
-    population_size: int = 40 # population size (number of individuals)
+    num_generations: int = 10 # number of generations
+    population_size: int = 200 # population size (number of individuals)
     p_crossover: float = 0.6 # crossover probability
     mutation_rate: float = 0.2 # mutation rate
     k: int = 8 # number of individuals selected for tournament

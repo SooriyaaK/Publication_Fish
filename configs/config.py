@@ -12,6 +12,7 @@ class Config:
     # --------------------------------------------------------------
     name: string # the name - used for file name generation. Ideally unique
     iterations: int # number of iterations for the experiment
+    save_only_best_iteration: bool # if True, the best of each iteration will be saved, if False the best of every generation will be saved
 
     # --------------------------------------------------------------
     # DATA
