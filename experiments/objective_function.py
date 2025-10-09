@@ -22,7 +22,8 @@ class ObjectiveFunctionEvaluator:
             if exp_id not in self.data_dict:
                 raise Exception(f"Experiment id {exp_id} not in data.")
             exp_data_dict = self.data_dict[exp_id]
-
+            if self.config.fish_ids == [] or self.config.fish_ids == None:
+                self.config.fish_ids = list(range(1, len(exp_data_dict[0]['vx_list'])+1))
             for fish_id in self.config.fish_ids:
                 timesteps = sorted(exp_data_dict.keys())
                 if len(timesteps) < 2:
@@ -33,8 +34,8 @@ class ObjectiveFunctionEvaluator:
                     t_next = timesteps[i+1]
 
                     actual_next_velocity = np.array([
-                        exp_data_dict[t_next]['vx_list'][fish_id],
-                        exp_data_dict[t_next]['vy_list'][fish_id]
+                        exp_data_dict[t_next]['vx_list'][fish_id-1],
+                        exp_data_dict[t_next]['vy_list'][fish_id-1]
                     ])
 
                     # --- compute predicted velocity ---
